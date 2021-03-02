@@ -1,0 +1,153 @@
+#- Filename     : trnt_release
+#- Description  : This script creates custom database objects for Common procedures
+#-
+#- Parameters : $p_apps      = APPS DB user name
+#-              $p_apps_pwd  = APPS DB password 
+#-              $p_sid       = Instance_connectstring or SID
+#-               
+#-  Called By : trnt_release
+#-
+#-  Modules Called  : None 
+#-		      
+#-
+#-
+#- Usage : . trnt_release<APPS_USER_NAME> <APPS_PASSWORD><SID>
+#-    Ex : . trnt_releaseAPPS passdwlwd  VIS
+#-
+#-
+# =========================================================
+# Check whether required number of parameters are passed 
+# Ex. here we are checking for 3 parameters 
+# =========================================================
+if [ $# -lt 3 ]
+then
+    echo ""
+    echo "Expecting 3 parameters"
+    echo ""
+    echo "Usage : "
+    echo ""
+    exit 1
+fi
+currpath=`pwd`
+
+#--------------------------------------------------------------------------
+# Create Table
+#--------------------------------------------------------------------------
+CreateTable()
+{
+	echo "Creating Database tables: "
+        # Create Tables
+        echo
+        sqlplus -s $p_apps/$p_apps_pwd@$p_sid <<EOF
+                 @./source/sql/trnt_config.sql
+				 @./source/sql/trnt_config_addition_col.sql
+		         @./source/sql/trnt_config_incremental.sql;
+                 @./source/sql/trnt_config_api_response.sql;
+				 @./source/sql/trnt_config_segment.sql;
+				 @./source/sql/trnt_config_segment_list.sql;
+			     @./source/sql/trnt_config_type.sql;
+				 @./source/sql/trnt_default_parameter.sql;
+		 		 @./source/sql/trnt_segment_config.sql;
+		         @./source/sql/trnt_segment_selection.sql;
+		         @./source/sql/trnt_seq.sql;
+
+show errors
+quit
+EOF
+}
+#--------------------------------------------------------------------------
+# Insert Data & Delete exisitng Data
+#--------------------------------------------------------------------------
+InsertData()
+{
+	echo "Insert Data into tables: "
+        # Insert Data
+        echo
+        sqlplus -s $p_apps/$p_apps_pwd@$p_sid <<EOF
+		 @./source/sql/trnt_config_type_data.sql;
+		 @./source/sql/trnt_default_parameter_data.sql;		
+		 @./source/sql/trnt_segment_config_data.sql;
+
+show errors
+quit
+EOF
+}
+#--------------------------------------------------------------------------
+# Create Package 
+#--------------------------------------------------------------------------
+CreatePackages()
+{
+	echo "Processing for Package creation: "
+        # CreatePackages
+  sqlplus -s $p_apps/$p_apps_pwd@$p_sid << EOF
+         
+	     @./source/package/trnt_common_util.pks;	
+	     @./source/package/trnt_common_util.pkb;
+	     @./source/package/trnt_gl_balance_ext_pkg.pks;
+	     @./source/package/trnt_gl_balance_ext_pkg.pkb;
+         @./source/package/trnt_exchange_rate_pkg.pks;
+	     @./source/package/trnt_exchange_rate_pkg.pkb;
+	     @./source/package/trnt_gl_trans_ext_pkg.pks;
+	     @./source/package/trnt_gl_trans_ext_pkg.pkb;
+         @./source/package/trnt_ap_ext_pkg.pks;
+	     @./source/package/trnt_ap_ext_pkg.pkb;
+         @./source/package/trnt_ar_ext_pkg.pks;
+	     @./source/package/trnt_ar_ext_pkg.pkb;
+		 @./source/package/trnt_inv_ext_pkg.pks;
+	     @./source/package/trnt_inv_ext_pkg.pkb;
+		 @./source/package/trnt_fa_ext_pkg.pks;
+	     @./source/package/trnt_fa_ext_pkg.pkb;
+		 
+
+show errors
+quit
+EOF
+}
+
+# ===============================================================
+# Uploading LDT files
+# ===============================================================
+
+UploadLDT()
+{
+cd $currpath
+echo "Creating Profiles"
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_INVEN_CP1.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_ASSETS_EXT.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_GL_BAL_EXTRACT_CP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE 
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_FX_EXTRACT_CP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_GL_TRANS_EXTRACT_CP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_AP_EXTRACT_CP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afcpprog.lct source/fnd/TRNT_AR_EXTRACT_CP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd O Y UPLOAD $FND_TOP/patch/115/import/afcpreqg.lct source/fnd/CADENCY_RG.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afsload.lct  source/fnd/CADENCY_MENU.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afscursp.lct source/fnd/CADENCY_RESP.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+#FNDLOAD $p_apps/$p_apps_pwd 0 Y UPLOAD $FND_TOP/patch/115/import/afscursp.lct source/fnd/FND_USER_TRINTECH.ldt - WARNING=YES UPLOAD_MODE=REPLACE CUSTOM_MODE=FORCE
+
+echo "Complete Uploading  ..."
+ 
+}
+#---------------------------------------------------------------------
+ComplieForms()
+{
+cd $currpath
+echo "CompileForms"
+frmcmp_batch module=$AU_TOP/forms/US/CAD_CONFIG.fmb output_file=$GL_TOP/forms/US/CAD_CONFIG.fmx userid=$p_apps/$p_apps_pwd module_type=FORM
+frmcmp_batch module=$AU_TOP/forms/US/CAD_EXTRACT.fmb output_file=$GL_TOP/forms/US/CAD_EXTRACT.fmx userid=$p_apps/$p_apps_pwd module_type=FORM
+echo "Complete Compiling Forms  ..."
+ 
+}
+
+
+
+#---------------------------------------------------------------------
+# Call the functions					      
+#---------------------------------------------------------------------
+
+CreateTable
+InsertData
+CreatePackages
+UploadLDT
+#ComplieForms
+
+# ==================================================================

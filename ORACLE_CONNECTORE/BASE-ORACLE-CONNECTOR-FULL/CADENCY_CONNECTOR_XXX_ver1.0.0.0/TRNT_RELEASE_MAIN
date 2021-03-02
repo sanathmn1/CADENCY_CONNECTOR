@@ -1,0 +1,59 @@
+
+#- Filename     : TRNT_RELEASE_MAIN
+#- Description  : This is the main script that is used to
+#-                    1.to Define objects in the application
+#-                    2.to create/modify database objects
+#-
+#- Parameters   :     $1 = APPS DB user name
+#-                    $2 = APPS DB password             
+#-                    $3 = Instance_connectstring or SID
+#-
+#-
+#- Usage : sh TRNT_RELEASE_MAIN <APPS_USER_NAME> <APPS_PASSWORD> <SID> 
+#-
+#-----------------------------------------------------------------------
+#-
+#- =========================================================
+#  Check whether required number of parameters are passed 
+#  Ex. here we are checking for 3 parameters 
+#  =========================================================
+if [ $# -lt 3 ]
+then
+    echo ""
+    echo "Expecting 3 parameters"
+    echo ""
+    echo "Usage : sh TRNT_RELEASE_MAIN <APPS_USER_NAME> <APPS_PASSWORD> <SID>"
+    echo ""
+    exit 1
+fi
+
+# =================================================================================
+# Export the parameter, for its availablity in child script 
+# =================================================================================
+
+p_apps=$1;		export p_apps
+p_apps_pwd=$2;	export p_apps_pwd
+p_sid=$3;       export p_sid
+
+
+# =================================================================================
+# Call other scripts
+# =================================================================================
+
+echo $p_apps $p_apps_pwd $p_sid
+
+echo "Executing trnt_release"
+sh source/TRNT_RELEASE $p_apps $p_apps_pwd  $p_sid >> TRNT_RELEASE_LOGS.log 2>> TRNT_RELEASE_ERROR.err
+
+#-
+#- undefine parameters
+#-
+
+p_apps='';		export p_apps
+p_apps_pwd='';	export p_apps_pwd
+p_sid='';		export p_sid
+
+
+echo ""
+echo "Please review TRNT_RELEASE_LOGS.log  and TRNT_RELEASE_ERROR.err for Database related Errors/Warnings"
+echo ""
